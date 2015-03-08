@@ -11,7 +11,7 @@ def grad(fun, argnum=0):
         end_node = fun(*args, **kwargs)
         if not tape.hasmember(end_node):
             return start_node.sum_outgrads()
-        if not isinstance(getval(end_node), float):
+        if not (isinstance(getval(end_node), float) or isinstance(getval(end_node), int)):
             raise TypeError("Can only take gradient of scalar-valued functions")
         else:
             end_node.outgrads.append(1.0)
