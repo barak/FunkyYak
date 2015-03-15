@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.random as npr
 from test_util import *
-from funkyyak import grad
+from autograd import grad
 npr.seed(1)
 
 def test_abs():
@@ -73,3 +73,9 @@ def test_tanh():
     d_fun = grad(fun)
     check_grads(fun, npr.randn())
     check_grads(d_fun, npr.randn())
+
+def test_sqrt():
+    fun = lambda x : 3.0 * np.sqrt(x)
+    d_fun = grad(fun)
+    check_grads(fun, 10.0*npr.rand())
+    check_grads(d_fun, 10.0*npr.rand())

@@ -1,6 +1,5 @@
 import numpy as np
 import operator as op
-import itertools as it
 from functools import partial
 from core import primitive, getval, untake
 
@@ -51,6 +50,7 @@ np.sinh   = P(np.sinh,   lambda ans, x : [lambda g : g * np.cosh(x)])
 np.cosh   = P(np.cosh,   lambda ans, x : [lambda g : g * np.sinh(x)])
 np.tanh   = P(np.tanh,   lambda ans, x : [lambda g : g / np.cosh(x) **2])
 np.square = P(np.square, lambda ans, x : [lambda g : g * 2 * x])
+np.sqrt   = P(np.sqrt,   lambda ans, x : [lambda g : g * 0.5 * x**-0.5])
 np.sign   = P(np.sign,   lambda ans, x : [lambda g : 0.0])
 np.full   = P(np.full,   lambda ans, shape, fill_value : [None, lambda g :  np.sum(g)])
 np.reshape     = P(np.reshape,     lambda ans, x, shape, order=None : [lambda g : np.reshape(g, x.shape, order=order)])
@@ -59,7 +59,11 @@ np.expand_dims = P(np.expand_dims, lambda ans, x, axis              : [lambda g 
 np.squeeze     = P(np.squeeze,     lambda ans, x, axis              : [lambda g : np.repeat(g, x.shape[axis], axis)])
 np.repeat      = P(np.repeat,      lambda ans, x, shape, axis       : [lambda g : np.sum(g, axis, keepdims=True)])
 np.transpose   = P(np.transpose,   lambda ans, x                    : [lambda g : np.transpose(g)])
-np.split       = P(np.split,       lambda ans, A, idxs, axis=0      : [lambda g : np.concatenate(g, axis=axis)])
+np.split       = P(np.split,       lambda ans, x, idxs, axis=0      : [lambda g : np.concatenate(g, axis=axis)])
+np.diag        = P(np.diag,        lambda ans, x                    : [lambda g : np.diag(g)])
+np.trace       = P(np.trace,       lambda ans, x                    : [lambda g : g * np.eye(x.shape[0])])
+np.linalg.inv  = P(np.linalg.inv,  lambda ans, x                    : [lambda g : -np.dot(np.dot(ans.T, g), ans.T)])
+np.linalg.det  = P(np.linalg.det,  lambda ans, x                    : [lambda g : g * ans * np.linalg.inv(x).T])
 
 def make_grad_np_sum(ans, x, axis=None, keepdims=False):
     if not isarray(x):
