@@ -1,5 +1,5 @@
 from test_util import *
-from funkyyak import grad
+from autograd import grad
 
 # This checks if fanout causes non-constant overhead.
 # If it does, the call to df will take forever.

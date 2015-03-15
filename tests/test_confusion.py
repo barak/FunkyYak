@@ -1,5 +1,5 @@
 from test_util import *
-from funkyyak import grad
+from autograd import grad
 
 ## See Siskind & Pearlmutter (2008), "Nesting forward-mode AD in a
 ## functional framework", Higher Order and Symbolic Computation

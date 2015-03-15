@@ -1,5 +1,5 @@
 from test_util import *
-from funkyyak import grad
+from autograd import grad
 
 def test_int_case():
     check_equivalent((lambda x:x*x)(2.0),         4.0)
