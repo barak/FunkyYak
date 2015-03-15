@@ -2,17 +2,18 @@ import numpy as np
 import operator as op
 from functools import partial
 from core import primitive, getval, untake
+import scipy.stats as sps
 
 P = primitive
 
 # ----- Operator gradients -----
 I = lambda x : x # Identity operator
-op.neg = P(op.neg, lambda ans, x    : [op.neg])
-op.add = P(op.add, lambda ans, x, y : unbroadcast(ans, x, y, [I, I]))
-op.mul = P(op.mul, lambda ans, x, y : unbroadcast(ans, x, y, [lambda g : y * g, lambda g : x * g]))
-op.sub = P(op.sub, lambda ans, x, y : unbroadcast(ans, x, y, [I, op.neg]))
-op.div = P(op.div, lambda ans, x, y : unbroadcast(ans, x, y, [lambda g : g / y, lambda g : - g * x / y**2]))
-op.pow = P(op.pow, lambda ans, x, y : unbroadcast(ans, x, y, [lambda g : g * y * x ** (y - 1),
+neg = P(op.neg, lambda ans, x    : [op.neg])
+add = P(op.add, lambda ans, x, y : unbroadcast(ans, x, y, [I, I]))
+mul = P(op.mul, lambda ans, x, y : unbroadcast(ans, x, y, [lambda g : y * g, lambda g : x * g]))
+sub = P(op.sub, lambda ans, x, y : unbroadcast(ans, x, y, [I, op.neg]))
+div = P(op.div, lambda ans, x, y : unbroadcast(ans, x, y, [lambda g : g / y, lambda g : - g * x / y**2]))
+pow = P(op.pow, lambda ans, x, y : unbroadcast(ans, x, y, [lambda g : g * y * x ** (y - 1),
                                                               lambda g : g * np.log(x) * x ** y]))
 isarray = lambda x : isinstance(getval(x), np.ndarray)
 isfloat = lambda x : isinstance(getval(x), float)
@@ -64,6 +65,9 @@ np.diag        = P(np.diag,        lambda ans, x                    : [lambda g 
 np.trace       = P(np.trace,       lambda ans, x                    : [lambda g : g * np.eye(x.shape[0])])
 np.linalg.inv  = P(np.linalg.inv,  lambda ans, x                    : [lambda g : -np.dot(np.dot(ans.T, g), ans.T)])
 np.linalg.det  = P(np.linalg.det,  lambda ans, x                    : [lambda g : g * ans * np.linalg.inv(x).T])
+
+# ----- Scipy gradients -----
+sps.norm.cdf   = P(sps.norm.cdf, lambda ans, x, loc=0.0, scale=1.0 : [lambda g : g * (1./(np.sqrt(2.0*np.pi)*scale)) *np.exp(-((x-loc)**2.0)/(2.0*(scale**2.)))])
 
 def make_grad_np_sum(ans, x, axis=None, keepdims=False):
     if not isarray(x):
