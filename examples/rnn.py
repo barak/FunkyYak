@@ -29,42 +29,25 @@ def logsumexp(X, axis=1):
     max_X = np.max(X)
     return max_X + np.log(np.sum(np.exp(X - max_X), axis=axis, keepdims=True))
 
-def build_lstm(input_size, state_size, output_size):
+def build_rnn(input_size, state_size, output_size):
     """Builds functions to compute the output of an LSTM."""
     parser = WeightsParser()
-    parser.add_shape('init_cells',   (1, state_size))
     parser.add_shape('init_hiddens', (1, state_size))
     parser.add_shape('change',  (input_size + state_size + 1, state_size))
-    parser.add_shape('forget',  (input_size + 2 * state_size + 1, state_size))
-    parser.add_shape('ingate',  (input_size + 2 * state_size + 1, state_size))
-    parser.add_shape('outgate', (input_size + 2 * state_size + 1, state_size))
     parser.add_shape('predict', (state_size + 1, output_size))
 
-    def update_lstm(input, hiddens, cells, forget_weights, change_weights,
-                                           ingate_weights, outgate_weights):
-        """One iteration of an LSTM layer."""
-        change  = np.tanh(activations(change_weights, input, hiddens))
-        forget  = sigmoid(activations(forget_weights, input, cells, hiddens))
-        ingate  = sigmoid(activations(ingate_weights, input, cells, hiddens))
-        cells   = cells * forget + ingate * change
-        outgate = sigmoid(activations(outgate_weights, input, cells, hiddens))
-        hiddens = outgate * np.tanh(cells)
-        return hiddens, cells
+    def update(input, hiddens, change_weights):
+        return np.tanh(activations(change_weights, input, hiddens))
 
     def outputs(weights, inputs):
         """Goes from right to left, updating the state."""
-        forget_weights  = parser.get(weights, 'forget')
-        change_weights  = parser.get(weights, 'change')
-        ingate_weights  = parser.get(weights, 'ingate')
-        outgate_weights = parser.get(weights, 'outgate')
-        predict_weights = parser.get(weights, 'predict')
         num_sequences = inputs.shape[1]
         hiddens = np.repeat(parser.get(weights, 'init_hiddens'), num_sequences, axis=0)
-        cells   = np.repeat(parser.get(weights, 'init_cells'),   num_sequences, axis=0)
+        change_weights  = parser.get(weights, 'change')
+        predict_weights = parser.get(weights, 'predict')
         output = []
         for input in inputs:  # Iterate over time steps.
-            hiddens, cells = update_lstm(input, hiddens, cells, forget_weights,
-                                         change_weights, ingate_weights, outgate_weights)
+            hiddens = update(input, hiddens, change_weights)
             cur_output = activations(predict_weights, hiddens)
             output.append(cur_output - logsumexp(cur_output))
         return output # Output normalized log-probabilities.
@@ -109,12 +92,12 @@ if __name__ == '__main__':
     param_scale = 0.01
     train_iters = 100
 
-    train_inputs   = build_dataset('lstm.py', seq_length, input_size, lines = 60, pad = " ")
-    train_targets  = build_dataset('lstm.py', seq_length, input_size, lines = 60)
+    train_inputs   = build_dataset('rnn.py', seq_length, input_size, lines = 60, pad = " ")
+    train_targets  = build_dataset('rnn.py', seq_length, input_size, lines = 60)
 
-    pred_fun, loss_fun, frac_err, num_weights = build_lstm(input_size, state_size, output_size)
+    pred_fun, loss_fun, frac_err, num_weights = build_rnn(input_size, state_size, output_size)
 
-    loss_grad = grad(loss_fun)   # Specify gradient of loss function using autograd.
+    loss_grad = grad(loss_fun)   # Specifies gradient of loss function using autograd.
 
     def training_grad(weights):
         return loss_grad(weights, train_inputs, train_targets)
@@ -130,15 +113,16 @@ if __name__ == '__main__':
             print training_text.replace('\n', ' ') + "| " + predicted_text.replace('\n', ' ')
 
     def callback(weights):
-        print "\nTrain loss:", loss_fun(weights, train_inputs, train_targets)
+        print "Train loss:", loss_fun(weights, train_inputs, train_targets)
         print_training_prediction(weights, train_inputs, train_targets)
 
-    print "Training LSTM model..."
+    print "Training RNN..."
     weights = npr.randn(num_weights) * param_scale
     weights = fmin_cg(training_loss, weights, fprime=training_grad,
                       maxiter=train_iters, callback=callback)
 
-    print "\nGenerating text from LSTM model..."
+    print
+    print "Generating text from RNN..."
     num_letters = 30
     for t in xrange(20):
         text = " "
