@@ -25,6 +25,41 @@ def test_max():
     check_grads(fun, mat)
     check_grads(d_fun, mat)
 
+def test_max_axis():
+    def fun(x): return to_scalar(np.max(x, axis=1))
+    d_fun = lambda x : to_scalar(grad(fun)(x))
+    mat = npr.randn(3, 4, 5)
+    check_grads(fun, mat)
+    check_grads(d_fun, mat)
+
+def test_max_axis_keepdims():
+    def fun(x): return to_scalar(np.max(x, axis=1, keepdims=True))
+    d_fun = lambda x : to_scalar(grad(fun)(x))
+    mat = npr.randn(3, 4, 5)
+    check_grads(fun, mat)
+    check_grads(d_fun, mat)
+
+def test_min():
+    def fun(x): return to_scalar(np.min(x))
+    d_fun = lambda x : to_scalar(grad(fun)(x))
+    mat = npr.randn(10, 11)
+    check_grads(fun, mat)
+    check_grads(d_fun, mat)
+
+def test_min_axis():
+    def fun(x): return to_scalar(np.min(x, axis=1))
+    d_fun = lambda x : to_scalar(grad(fun)(x))
+    mat = npr.randn(3, 4, 5)
+    check_grads(fun, mat)
+    check_grads(d_fun, mat)
+
+def test_min_axis_keepdims():
+    def fun(x): return to_scalar(np.min(x, axis=1, keepdims=True))
+    d_fun = lambda x : to_scalar(grad(fun)(x))
+    mat = npr.randn(3, 4, 5)
+    check_grads(fun, mat)
+    check_grads(d_fun, mat)
+
 def test_sum_1():
     def fun(x): return to_scalar(np.sum(x))
     d_fun = lambda x : to_scalar(grad(fun)(x))
@@ -214,5 +249,12 @@ def test_det():
     check_grads(fun, mat)
     check_grads(d_fun, mat)
 
+def test_transpose():
+    def fun(x): return to_scalar(x.T)
+    d_fun = lambda x : to_scalar(grad(fun)(x))
+    mat = npr.randn(8, 8)
+    check_grads(fun, mat)
+    check_grads(d_fun, mat)
+
 # TODO:
-# squeeze, transpose, getitem
+# squeeze, getitem
