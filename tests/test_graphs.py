@@ -1,7 +1,8 @@
-import numpy as np
-import numpy.random as npr
-from test_util import *
+import autograd.numpy as np
+import autograd.numpy.random as npr
+from autograd.util import *
 from autograd import grad
+import warnings
 npr.seed(1)
 
 def test_grad_fanout():
@@ -12,8 +13,10 @@ def test_grad_fanout():
 
 def test_grad_const():
     fun = lambda x : 1
-    df = grad(fun)
-    assert np.allclose(df(2.0), 0.0)
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("ignore")
+        df = grad(fun)
+        assert np.allclose(df(2.0), 0.0)
 
 def test_grad_identity():
     fun = lambda x : x
@@ -47,6 +50,28 @@ def test_enclosing_scope_ref_2():
         inner_fun = lambda y : y * x
         return x * grad(inner_fun)(2.0)
     check_grads(fun, 1.0)
+
+def test_mutating_outgrad():
+    def fun(a):
+        b = a + 1.0
+        c = b + 1.5
+        d = a + b
+        e = d + c
+        return to_scalar(e)
+
+    A = npr.randn(5)
+    check_grads(fun, A)
+
+def test_mutating_outgrad_from_indexing():
+    def fun(a):
+        b = a + 1.0
+        c = b[0] + 1.5
+        d = a + b
+        e = d + c
+        return to_scalar(e)
+
+    A = npr.randn(5)
+    check_grads(fun, A)
 
 # TODO:
 # Grad three or more, wrt different args

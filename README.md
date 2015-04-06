@@ -1,13 +1,14 @@
-# Autograd (Formerly FunkyYak)
+# Autograd
 
-Taking a few lessons from developing and working with Kayak, here is a
-stateless reverse-mode autodiff implementation that also offers
-higher-order derivatives.
+Autograd is an automatic differentiation package for Python, using native Python and Numpy syntax.
+It can handle a large subset of Python's features, including loops, ifs, recursion and even closures.
+It uses reverse-mode differentiation (a.k.a. backpropagation), meaning it can efficiently take gradients of scalar-valued functions with respect to array-valued arguments.
+The main intended application is gradient-based optimization.
 
 Example use:
 
 ```python
-import numpy as np
+import autograd.numpy as np
 import matplotlib.pyplot as plt
 from autograd import grad
 
@@ -74,12 +75,28 @@ plt.plot(x, map(tanh, x),
 
 <img src="https://github.com/HIPS/autograd/blob/master/examples/tanh.png" width="600">
 
+## Examples:
+
+* [Neural net](https://github.com/HIPS/autograd/blob/master/examples/neural_net.py)
+* [RNN](https://github.com/HIPS/autograd/blob/master/examples/rnn.py)
+* [LSTM](https://github.com/HIPS/autograd/blob/master/examples/lstm.py)
+* [Backpropagating through a fluid simulation](https://github.com/HIPS/autograd/blob/master/examples/fluidsim/fluidsim.py)
+
+<img src="https://github.com/HIPS/autograd/blob/master/examples/fluidsim/animated.gif" width="400">
+
 ## How to install:
 
 Simply run
 
 ```bash
-git clone https://github.com/HIPS/autograd.git
+git clone --depth 1 --branch master https://github.com/HIPS/autograd.git
 cd autograd/
 python setup.py install
 ```
+
+## Authors:
+
+[Dougal Maclaurin](mailto:maclaurin@physics.harvard.edu) and [David Duvenaud](http://mlg.eng.cam.ac.uk/duvenaud/)
+
+We thank Matthew Johnson, Jasper Snoek, and the rest of the HIPS group (led by Ryan P. Adams) for helpful contributions.
+We thank Analog Devices International and Samsung Advanced Institute of Technology for their support.
