@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import autograd.numpy as np
 import autograd.numpy.random as npr
 from autograd.util import *
-from autograd import grad
+from autograd import grad, value_and_grad
 rs = npr.RandomState(0)
 
 def arg_pairs():
@@ -27,7 +29,7 @@ def test_add():
     d_fun_0 = lambda x, y : to_scalar(grad(fun, 0)(x, y))
     d_fun_1 = lambda x, y : to_scalar(grad(fun, 1)(x, y))
     for arg1, arg2 in arg_pairs():
-        print type(arg1), type(arg2)
+        print(type(arg1), type(arg2))
         check_grads(fun, arg1, arg2)
         check_grads(d_fun_0, arg1, arg2)
         check_grads(d_fun_1, arg1, arg2)
@@ -53,6 +55,19 @@ def test_div():
         check_grads(d_fun_0, arg1, arg2)
         check_grads(d_fun_1, arg1, arg2)
 
+def test_mod():
+    fun = lambda x, y : to_scalar(x % y)
+    d_fun_0 = lambda x, y : to_scalar(grad(fun, 0)(x, y))
+    d_fun_1 = lambda x, y : to_scalar(grad(fun, 1)(x, y))
+    make_gap_from_zero = lambda x : np.sqrt(x **2 + 0.5)
+    for arg1, arg2 in arg_pairs():
+        if not arg1 is arg2:  # Gradient undefined at x == y
+            arg1 = make_gap_from_zero(arg1)
+            arg2 = make_gap_from_zero(arg2)
+            check_grads(fun, arg1, arg2)
+            check_grads(d_fun_0, arg1, arg2)
+            check_grads(d_fun_1, arg1, arg2)
+
 def test_pow():
     fun = lambda x, y : to_scalar(x ** y)
     d_fun_0 = lambda x, y : to_scalar(grad(fun, 0)(x, y))
@@ -60,7 +75,6 @@ def test_pow():
     make_positive = lambda x : np.abs(x) + 1.1 # Numeric derivatives fail near zero
     for arg1, arg2 in arg_pairs():
         arg1 = make_positive(arg1)
-        arg2 = np.round(arg2)
         check_grads(fun, arg1, arg2)
         check_grads(d_fun_0, arg1, arg2)
         check_grads(d_fun_1, arg1, arg2)
@@ -96,5 +110,5 @@ def test_comparison_values():
     for arg1, arg2 in arg_pairs():
         for fun in compare_funs:
             fun_val = fun(arg1, arg2)
-            fun_val_from_grad, _ = grad(fun, return_function_value=True)(arg1, arg2)
+            fun_val_from_grad, _ = value_and_grad(fun)(arg1, arg2)
             assert fun_val == fun_val_from_grad, (fun_val, fun_val_from_grad)

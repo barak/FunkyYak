@@ -1,102 +1,91 @@
-# Autograd
+# Autograd  [![Test status](https://travis-ci.org/HIPS/autograd.svg?branch=master)](https://travis-ci.org/HIPS/autograd)
 
-Autograd is an automatic differentiation package for Python, using native Python and Numpy syntax.
-It can handle a large subset of Python's features, including loops, ifs, recursion and even closures.
-It uses reverse-mode differentiation (a.k.a. backpropagation), meaning it can efficiently take gradients of scalar-valued functions with respect to array-valued arguments.
-The main intended application is gradient-based optimization.
+
+Autograd can automatically differentiate native Python and Numpy code. It can
+handle a large subset of Python's features, including loops, ifs, recursion and
+closures, and it can even take derivatives of derivatives of derivatives. It
+uses reverse-mode differentiation (a.k.a. backpropagation), which means it can
+efficiently take gradients of scalar-valued functions with respect to
+array-valued arguments. The main intended application is gradient-based
+optimization. For more information, check out the [tutorial](docs/tutorial.md)
+and the [examples directory](examples/).
 
 Example use:
 
 ```python
-import autograd.numpy as np
-import matplotlib.pyplot as plt
-from autograd import grad
-
-def fun(x):
-    return np.sin(x)
-
-d_fun = grad(fun)    # First derivative
-dd_fun = grad(d_fun) # Second derivative
-
-x = np.linspace(-10, 10, 100)
-plt.plot(x, map(fun, x), x, map(d_fun, x), x, map(dd_fun, x))
+>>> import autograd.numpy as np  # Thinly-wrapped numpy
+>>> from autograd import grad    # The only autograd function you may ever need
+>>>
+>>> def tanh(x):                 # Define a function
+...     y = np.exp(-x)
+...     return (1.0 - y)  / ( 1.0 + y)
+... 
+>>> grad_tanh = grad(tanh)       # Obtain its gradient function
+>>> grad_tanh(1.0)               # Evaluate the gradient at x = 1.0
+0.39322386648296376
+>>> (tanh(1.0001) - tanh(0.9999)) / 0.0002  # Compare to finite differences
+0.39322386636453377
 ```
-<img src="https://github.com/HIPS/autograd/blob/master/examples/sinusoid.png" width="600">
 
-The function can even have control flow, which raises the prospect
-of differentiating through an iterative routine like an
-optimization. Here's a simple example.
+We can continue to differentiate as many times as we like:
 
 ```python
-# Taylor approximation to sin function
-def fun(x):
-    currterm = x
-    ans = currterm
-    for i in xrange(1000):
-        currterm = - currterm * x ** 2 / ((2 * i + 3) * (2 * i + 2))
-        ans = ans + currterm
-        if np.abs(currterm) < 0.2: break # (Very generous tolerance!)
-
-    return ans
-
-d_fun = grad(fun)
-dd_fun = grad(d_fun)
-
-x = np.linspace(-10, 10, 100)
-plt.plot(x, map(fun, x), x, map(d_fun, x), x, map(dd_fun, x))
+>>> grad_tanh_2 = grad(grad_tanh)           # 2nd derivative
+>>> grad_tanh_3 = grad(grad_tanh_2)         # 3rd derivative
+>>> grad_tanh_4 = grad(grad_tanh_3)         # etc.
+>>> grad_tanh_5 = grad(grad_tanh_4)
+>>> grad_tanh_6 = grad(grad_tanh_5)
+>>>
+>>> import matplotlib.pyplot as plt
+>>> x = np.linspace(-7, 7, 200)
+>>> plt.plot(x, map(tanh, x),
+...          x, map(grad_tanh, x),
+...          x, map(grad_tanh_2, x),
+...          x, map(grad_tanh_3, x),
+...          x, map(grad_tanh_4, x),
+...          x, map(grad_tanh_5, x),
+...          x, map(grad_tanh_6, x))
+>>> plt.show()
 ```
 
-<img src="https://github.com/HIPS/autograd/blob/master/examples/sinusoid_taylor.png" width="600">
+<img src="examples/tanh.png" width="600">
 
+See the [tanh example file](examples/tanh.py) for the code.
 
-We can take the derivative of the derivative automatically as well, as many times as we like:
+## Documentation
 
-```python
-# Define the tanh function
-def tanh(x):
-    return (1.0 - np.exp(-x))  / ( 1.0 + np.exp(-x))
+You can find a tutorial [here.](docs/tutorial.md)
 
-d_fun = grad(tanh)           # First derivative
-dd_fun = grad(d_fun)         # Second derivative
-ddd_fun = grad(dd_fun)       # Third derivative
-dddd_fun = grad(ddd_fun)     # Fourth derivative
-ddddd_fun = grad(dddd_fun)   # Fifth derivative
-dddddd_fun = grad(ddddd_fun) # Sixth derivative
+## End-to-end examples
 
-x = np.linspace(-7, 7, 200)
-plt.plot(x, map(tanh, x),
-         x, map(d_fun, x),
-         x, map(dd_fun, x),
-         x, map(ddd_fun, x),
-         x, map(dddd_fun, x),
-         x, map(ddddd_fun, x),
-         x, map(dddddd_fun, x))
-```
+* [Simple neural net](examples/neural_net.py)
+* [Convolutional neural net](examples/convnet.py)
+* [Recurrent neural net](examples/rnn.py)
+* [LSTM](examples/lstm.py)
+* [Neural Turing Machine](https://github.com/DoctorTeeth/diffmem/blob/512aadeefd6dbafc1bdd253a64b6be192a435dc3/ntm/ntm.py)
+* [Backpropagating through a fluid simulation](examples/fluidsim/fluidsim.py)
 
-<img src="https://github.com/HIPS/autograd/blob/master/examples/tanh.png" width="600">
+<img src="examples/fluidsim/animated.gif" width="400">
 
-## Examples:
+* [Variational inference in Bayesian neural network](examples/bayesian_neural_net.py)
+* [Gaussian process regression](examples/gaussian_process.py)
 
-* [Neural net](https://github.com/HIPS/autograd/blob/master/examples/neural_net.py)
-* [RNN](https://github.com/HIPS/autograd/blob/master/examples/rnn.py)
-* [LSTM](https://github.com/HIPS/autograd/blob/master/examples/lstm.py)
-* [Backpropagating through a fluid simulation](https://github.com/HIPS/autograd/blob/master/examples/fluidsim/fluidsim.py)
+## How to install
 
-<img src="https://github.com/HIPS/autograd/blob/master/examples/fluidsim/animated.gif" width="400">
+Just run `pip install autograd`
 
-## How to install:
+## Authors
 
-Simply run
+Autograd was written by [Dougal Maclaurin](mailto:maclaurin@physics.harvard.edu),
+[David Duvenaud](http://mlg.eng.cam.ac.uk/duvenaud/)
+and [Matt Johnson](http://www.mit.edu/~mattjj/),
+and we're actively
+developing it. Please feel free to submit any bugs or feature requests.
+We'd also love to hear about your experiences with autograd in general.
+Drop us an email!
 
-```bash
-git clone --depth 1 --branch master https://github.com/HIPS/autograd.git
-cd autograd/
-python setup.py install
-```
-
-## Authors:
-
-[Dougal Maclaurin](mailto:maclaurin@physics.harvard.edu) and [David Duvenaud](http://mlg.eng.cam.ac.uk/duvenaud/)
-
-We thank Matthew Johnson, Jasper Snoek, and the rest of the HIPS group (led by Ryan P. Adams) for helpful contributions.
-We thank Analog Devices International and Samsung Advanced Institute of Technology for their support.
+We want to thank Jasper Snoek and the rest of the HIPS group (led by Prof. Ryan
+P. Adams) for helpful contributions and advice; Barak Pearlmutter for
+foundational work on automatic differentiation and for guidance on our
+implementation; and Analog Devices Inc. (Lyric Labs) and Samsung Advanced Institute
+of Technology for their generous support.

@@ -1,11 +1,15 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import autograd.numpy as np
-from autograd import grad
+from autograd import value_and_grad
 
 from scipy.optimize import minimize
 from scipy.misc import imread
 
+import matplotlib
 import matplotlib.pyplot as plt
 import os
+from builtins import range
 
 # Fluid simulation code based on
 # "Real-Time Fluid Dynamics for Games" by Jos Stam
@@ -19,7 +23,7 @@ def project(vx, vy):
     div = -0.5 * h * (np.roll(vx, -1, axis=0) - np.roll(vx, 1, axis=0)
                     + np.roll(vy, -1, axis=1) - np.roll(vy, 1, axis=1))
 
-    for k in xrange(10):
+    for k in range(10):
         p = (div + np.roll(p, 1, axis=0) + np.roll(p, -1, axis=0)
                  + np.roll(p, 1, axis=1) + np.roll(p, -1, axis=1))/4.0
 
@@ -51,8 +55,8 @@ def advect(f, vx, vy):
     return np.reshape(flat_f, (rows, cols))
 
 def simulate(vx, vy, smoke, num_time_steps, ax=None, render=False):
-    print "Running simulation..."
-    for t in xrange(num_time_steps):
+    print("Running simulation...")
+    for t in range(num_time_steps):
         if ax: plot_matrix(ax, smoke, t, render)
         vx_updated = advect(vx, vx, vy)
         vy_updated = advect(vy, vx, vy)
@@ -68,7 +72,7 @@ def plot_matrix(ax, mat, t, render=False):
     ax.set_yticks([])
     plt.draw()
     if render:
-        plt.savefig('step{0:03d}.png'.format(t), bbox_inches='tight')
+        matplotlib.image.imsave('step{0:03d}.png'.format(t), mat)
     plt.pause(0.001)
 
 
@@ -76,8 +80,9 @@ if __name__ == '__main__':
 
     simulation_timesteps = 100
 
-    print "Loading initial and target states..."
+    print("Loading initial and target states...")
     init_smoke = imread('init_smoke.png')[:,:,0]
+    #target = imread('peace.png')[::2,::2,3]
     target = imread('skull.png')[::2,::2]
     rows, cols = target.shape
 
@@ -97,7 +102,7 @@ if __name__ == '__main__':
         return distance_from_target_image(final_smoke)
 
     # Specify gradient of objective function using autograd.
-    objective_with_grad = grad(objective, return_function_value=True)
+    objective_with_grad = value_and_grad(objective)
 
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111, frameon=False)
@@ -106,15 +111,15 @@ if __name__ == '__main__':
         init_vx, init_vy = convert_param_vector_to_matrices(params)
         simulate(init_vx, init_vy, init_smoke, simulation_timesteps, ax)
 
-    print "Optimizing initial conditions..."
+    print("Optimizing initial conditions...")
     result = minimize(objective_with_grad, init_dx_and_dy, jac=True, method='CG',
                       options={'maxiter':25, 'disp':True}, callback=callback)
 
-    print "Rendering optimized flow..."
+    print("Rendering optimized flow...")
     init_vx, init_vy = convert_param_vector_to_matrices(result.x)
     simulate(init_vx, init_vy, init_smoke, simulation_timesteps, ax, render=True)
 
-    print "Converting frames to an animated GIF..."
+    print("Converting frames to an animated GIF...")
     os.system("convert -delay 5 -loop 0 step*.png"
-              " -delay 250 step099.png surprise.gif")  # Using imagemagick.
+              " -delay 250 step100.png surprise.gif")  # Using imagemagick.
     os.system("rm step*.png")

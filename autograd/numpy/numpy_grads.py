@@ -1,8 +1,11 @@
-from autograd.core import getval
-
+from __future__ import absolute_import
 import operator as op
+
+from autograd.core import getval
 from . import numpy_wrapper as anp
-from .numpy_extra import take
+from .numpy_extra import ArrayNode, take
+from builtins import range, zip
+from future.utils import string_types
 
 # ----- Functions that are constant w.r.t. continuous inputs -----
 
@@ -19,7 +22,10 @@ anp.argmax.defgrad_is_zero()
 anp.argmin.defgrad_is_zero()
 anp.argpartition.defgrad_is_zero()
 anp.argsort.defgrad_is_zero()
+anp.argwhere.defgrad_is_zero()
 anp.nonzero.defgrad_is_zero()
+anp.flatnonzero.defgrad_is_zero()
+anp.count_nonzero.defgrad_is_zero()
 anp.searchsorted.defgrad_is_zero()
 anp.sign.defgrad_is_zero()
 anp.ndim.defgrad_is_zero()
@@ -45,18 +51,26 @@ anp.less.defgrad_is_zero(argnums=(0, 1))
 anp.less_equal.defgrad_is_zero(argnums=(0, 1))
 anp.equal.defgrad_is_zero(argnums=(0, 1))
 anp.not_equal.defgrad_is_zero(argnums=(0, 1))
+anp.iscomplexobj.defgrad_is_zero()
+anp.iscomplex.defgrad_is_zero()
+anp.nan_to_num.defgrad_is_zero()
+anp.size.defgrad_is_zero()
+anp.where.defgrad_is_zero(argnums=(0,))
+anp.isscalar.defgrad_is_zero()
+anp.isreal.defgrad_is_zero()
+anp.zeros_like.defgrad_is_zero()
+anp.ones_like.defgrad_is_zero()
 
 # ----- Binary ufuncs -----
 
 I = lambda x : x
-anp.negative.defgrad(lambda ans, x: op.neg)
 anp.add.defgrad(lambda ans, x, y : unbroadcast(ans, x, I))
 anp.add.defgrad(lambda ans, x, y : unbroadcast(ans, y, I), argnum=1)
 anp.multiply.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g : y * g))
 anp.multiply.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : x * g), argnum=1)
 anp.subtract.defgrad(lambda ans, x, y : unbroadcast(ans, x, I))
 anp.subtract.defgrad(lambda ans, x, y : unbroadcast(ans, y, op.neg), argnum=1)
-anp.divide.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g : g / y))
+anp.divide.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g :   g / y))
 anp.divide.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : - g * x / y**2), argnum=1)
 anp.power.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g : g * y * x ** (y - 1)))
 anp.power.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : g * anp.log(x) * x ** y), argnum=1)
@@ -68,24 +82,22 @@ anp.logaddexp.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g : g * anp.
 anp.logaddexp.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : g * anp.exp(y-ans)), argnum=1)
 anp.logaddexp2.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g : g * 2**(x-ans)))
 anp.logaddexp2.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : g * 2**(y-ans)), argnum=1)
-
+anp.true_divide.defgrad(lambda ans, x, y : unbroadcast(ans, x, lambda g : g / y))
+anp.true_divide.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : - g * x / y**2), argnum=1)
+anp.mod.defgrad(      lambda ans, x, y : unbroadcast(ans, x, I))
+anp.remainder.defgrad(lambda ans, x, y : unbroadcast(ans, x, I))
+anp.mod.defgrad(      lambda ans, x, y : unbroadcast(ans, y, lambda g : -g * anp.floor(x/y)), argnum=1)
+anp.remainder.defgrad(lambda ans, x, y : unbroadcast(ans, y, lambda g : -g * anp.floor(x/y)), argnum=1)
 
 # ----- Simple grads -----
 
-anp.abs.defgrad(     lambda ans, x : lambda g : anp.sign(x) * g)
-anp.fabs.defgrad(    lambda ans, x : lambda g : anp.sign(x) * g)
-anp.absolute.defgrad(lambda ans, x : lambda g : anp.sign(x) * g)
-anp.true_divide.defgrad(lambda ans, x, y : lambda g : g / y)
-anp.true_divide.defgrad(lambda ans, x, y : lambda g : - g * x / y**2, argnum=1)
-anp.reciprocal.defgrad( lambda ans, x    : lambda g : - g / x**2)
-anp.mod.defgrad(      lambda ans, x, y : lambda g : g)
-anp.fmod.defgrad(     lambda ans, x, y : lambda g : g)
-anp.remainder.defgrad(lambda ans, x, y : lambda g : g)
-anp.mod.defgrad(      lambda ans, x, y : lambda g : -g * anp.floor(x/y), argnum=1)
-anp.fmod.defgrad(     lambda ans, x, y : lambda g : -g * anp.floor(x/y), argnum=1)
-anp.remainder.defgrad(lambda ans, x, y : lambda g : -g * anp.floor(x/y), argnum=1)
+anp.negative.defgrad(lambda ans, x: op.neg)
+anp.abs.defgrad(     lambda ans, x : lambda g : g * anp.conj(x) / ans)
+anp.fabs.defgrad(    lambda ans, x : lambda g : anp.sign(x) * g)  # fabs doesn't take complex numbers.
+anp.absolute.defgrad(lambda ans, x : lambda g : g * anp.conj(x) / ans)
+anp.reciprocal.defgrad(lambda ans, x : lambda g : - g / x**2)
 anp.exp.defgrad(   lambda ans, x : lambda g : ans * g)
-anp.exp2.defgrad(  lambda ans, x : lambda g : ans * g * anp.log(2))
+anp.exp2.defgrad(  lambda ans, x : lambda g : ans * anp.log(2) * g)
 anp.expm1.defgrad( lambda ans, x : lambda g : (ans + 1) * g)
 anp.log.defgrad(   lambda ans, x : lambda g : g / x)
 anp.log2.defgrad(  lambda ans, x : lambda g : g / x / anp.log(2))
@@ -107,52 +119,107 @@ anp.rad2deg.defgrad(lambda ans, x : lambda g : g / anp.pi * 180.0)
 anp.degrees.defgrad(lambda ans, x : lambda g : g / anp.pi * 180.0)
 anp.deg2rad.defgrad(lambda ans, x : lambda g : g * anp.pi / 180.0)
 anp.radians.defgrad(lambda ans, x : lambda g : g * anp.pi / 180.0)
-anp.square.defgrad(lambda ans, x : lambda g : g * 2 * x)
-anp.sqrt.defgrad(  lambda ans, x : lambda g : g * 0.5 * x**-0.5)
-anp.sinc.defgrad(  lambda ans, x : lambda g : g * (anp.cos(anp.pi*x)*anp.pi*x - anp.sin(anp.pi*x))/(anp.pi*x**2))
+anp.square.defgrad( lambda ans, x : lambda g : g * 2 * x)
+anp.sqrt.defgrad(   lambda ans, x : lambda g : g * 0.5 * x**-0.5)
+anp.sinc.defgrad(   lambda ans, x : lambda g : g * (anp.cos(anp.pi*x)*anp.pi*x - anp.sin(anp.pi*x))/(anp.pi*x**2))
 anp.reshape.defgrad(lambda ans, x, shape, order=None : lambda g : anp.reshape(g, anp.shape(x), order=order))
-anp.roll.defgrad(    lambda ans, x, shift, axis=None  : lambda g : anp.roll(g, -shift, axis=axis))
-anp.ravel.defgrad(lambda ans, x, order=None    : lambda g : anp.reshape(g, anp.shape(x), order=order))
-anp.expand_dims.defgrad(lambda ans, x, axis : lambda g : anp.squeeze(g, axis)[()])
-anp.squeeze.defgrad(    lambda ans, x, axis : lambda g : anp.repeat(g, x.shape[axis], axis))
-anp.repeat.defgrad(     lambda ans, x, shape, axis  : lambda g : anp.sum(g, axis, keepdims=True))
-anp.split.defgrad(      lambda ans, x, idxs, axis=0 : lambda g : anp.concatenate(g, axis=axis))
-anp.diag.defgrad(       lambda ans, x               : lambda g : anp.diag(g))
-anp.flipud.defgrad(     lambda ans, x,              : lambda g : anp.flipud(g))
-anp.fliplr.defgrad(     lambda ans, x,              : lambda g : anp.fliplr(g))
-anp.rot90.defgrad(      lambda ans, x, k=1          : lambda g : anp.rot90(g, -k))
-anp.trace.defgrad(      lambda ans, x               : lambda g : g * anp.eye(x.shape[0]))
-anp.full.defgrad(     lambda ans, shape, fill_value : lambda g : anp.sum(g), argnum=1)
-anp.triu.defgrad(       lambda ans, x, k=0          : lambda g : anp.triu(g, k=k))
-anp.tril.defgrad(       lambda ans, x, k=0          : lambda g : anp.tril(g, k=k))
-anp.clip.defgrad(       lambda ans, x, a_min, a_max : lambda g : g * anp.logical_and(ans != a_min, ans != a_max))
+anp.roll.defgrad(   lambda ans, x, shift, axis=None  : lambda g : anp.roll(g, -shift, axis=axis))
+anp.array_split.defgrad(lambda ans, ary, idxs, axis=0 : lambda g : anp.concatenate(g, axis=axis))
+anp.split.defgrad(      lambda ans, ary, idxs, axis=0 : lambda g : anp.concatenate(g, axis=axis))
+anp.vsplit.defgrad(     lambda ans, ary, idxs         : lambda g : anp.concatenate(g, axis=0))
+anp.hsplit.defgrad(     lambda ans, ary, idxs         : lambda g : anp.concatenate(g, axis=1))
+anp.dsplit.defgrad(     lambda ans, ary, idxs         : lambda g : anp.concatenate(g, axis=2))
+anp.ravel.defgrad(  lambda ans, x, order=None   : lambda g : anp.reshape(g, anp.shape(x), order=order))
+anp.expand_dims.defgrad(lambda ans, x, axis     : lambda g : anp.reshape(g, anp.shape(x)))
+anp.squeeze.defgrad(lambda ans, x, axis=None    : lambda g : anp.reshape(g, anp.shape(x)))
+anp.diag.defgrad(   lambda ans, x, k=0          : lambda g : anp.diag(g, k))
+anp.flipud.defgrad( lambda ans, x,              : lambda g : anp.flipud(g))
+anp.fliplr.defgrad( lambda ans, x,              : lambda g : anp.fliplr(g))
+anp.rot90.defgrad(  lambda ans, x, k=1          : lambda g : anp.rot90(g, -k))
+anp.trace.defgrad(  lambda ans, x, offset=0     : lambda g : anp.einsum('ij,...->ij...', anp.eye(x.shape[0], x.shape[1], k=offset), g))
+anp.full.defgrad(   lambda ans, shape, fill_value, dtype=None : lambda g : anp.sum(g), argnum=1)
+anp.triu.defgrad(   lambda ans, x, k=0          : lambda g : anp.triu(g, k=k))
+anp.tril.defgrad(   lambda ans, x, k=0          : lambda g : anp.tril(g, k=k))
+anp.clip.defgrad(   lambda ans, x, a_min, a_max : lambda g : g * anp.logical_and(ans != a_min, ans != a_max))
+anp.swapaxes.defgrad(lambda ans, x, axis1, axis2: lambda g : anp.swapaxes(g, axis2, axis1))
+anp.real_if_close.defgrad(lambda ans, x : lambda g : g)
+anp.real.defgrad(  lambda ans, x   : lambda g : g)
+anp.imag.defgrad(  lambda ans, x   : lambda g : -1j * g)
+anp.conj.defgrad(  lambda ans, x   : lambda g : anp.conj(g))
+anp.angle.defgrad( lambda ans, x   : lambda g : g * anp.conj(x * 1j) / anp.abs(x)**2)
+anp.where.defgrad( lambda ans, c, x=None, y=None : lambda g : anp.where(c, g, anp.zeros(g.shape)), argnum=1)
+anp.where.defgrad( lambda ans, c, x=None, y=None : lambda g : anp.where(c, anp.zeros(g.shape), g), argnum=2)
+anp.cross.defgrad(lambda ans, a, b, axisa=-1, axisb=-1, axisc=-1, axis=None : lambda g : anp.cross(b, g, axisb, axisc, axisa, axis), argnum=0)
+anp.cross.defgrad(lambda ans, a, b, axisa=-1, axisb=-1, axisc=-1, axis=None : lambda g : anp.cross(g, a, axisc, axisa, axisb, axis), argnum=1)
+
 
 # ----- Trickier grads -----
 
-isarray = lambda x : isinstance(getval(x), anp.ndarray)
+def make_grad_repeat(ans, x, repeats, axis=None):
+    shape = x.shape
+    if axis is None:  # If axis is none, np.repeat() repeats the flattened array.
+        def grad_repeat(g):
+            expanded = anp.reshape(g, (anp.prod(shape),) + (repeats,))
+            return anp.reshape(anp.sum(expanded, axis=1, keepdims=False), shape)
+        return grad_repeat
+    else:
+        if shape[axis] == 1:  # For this common case, the logic is simple.
+            return lambda g: anp.sum(g, axis=axis, keepdims=True)
+        else:
+            def grad_repeat(g):
+                expanded = anp.reshape(g, shape[0:axis+1] + (repeats,) + shape[axis+1:])
+                return anp.sum(expanded, axis=axis+1, keepdims=False)
+            return grad_repeat
+anp.repeat.defgrad(make_grad_repeat)
+
+def make_grad_tile(ans, x, reps):
+    reps = [reps] if anp.isscalar(reps) else reps
+    def tile_grad(g):
+        for axis, rep in enumerate(reps):
+            g = sum(anp.split(g, rep, axis))
+        return anp.reshape(g, x.shape)
+    return tile_grad
+anp.tile.defgrad(make_grad_tile)
+
 def make_grad_transpose(ans, x, axes=None):
     if axes is not None:
         axes = anp.argsort(axes)
     return lambda g : anp.transpose(g, axes)
 anp.transpose.defgrad(make_grad_transpose)
 
+isarray = lambda x : isinstance(getval(x), anp.ndarray)
+
 def repeat_to_match_shape(x, axis, keepdims):
     """Returns a function that repeats an array along axis to get a given shape.
        Also returns the number of repetitions of the array."""
+    assert isinstance(axis, (type(None), int, tuple))
+
     if not isarray(x):
         return I, 1
     shape = x.shape
     if axis is None:
+        dtype=None
+        if anp.iscomplexobj(x):
+            dtype = getval(anp.array(x)).dtype   # np.full() has a bug for complex numbers
         if keepdims:
-            return lambda g : anp.full(shape, anp.sum(g)), anp.prod(shape)
+            return lambda g : anp.full(shape, anp.sum(g), dtype=dtype), anp.prod(shape)
         else:
-            return lambda g : anp.full(shape, g), anp.prod(shape)
-    else:
+            return lambda g : anp.full(shape, g, dtype=dtype), anp.prod(shape)
+    elif isinstance(axis, int):
         if keepdims:
             return lambda g : anp.repeat(g, shape[axis], axis), shape[axis]
         else:
             return lambda g : anp.repeat(anp.expand_dims(g, axis),
                                          shape[axis], axis), shape[axis]
+    else:
+        repeats  = [shape[i] if i in axis else 1 for i in range(len(shape))]
+        expanded = [shape[i] if i not in axis else 1 for i in range(len(shape))]
+        num_reps = anp.prod(anp.array(shape)[list(axis)])
+
+        if keepdims:
+            return lambda g: anp.tile(g, repeats), num_reps
+        else:
+            return lambda g: anp.tile(anp.reshape(g, expanded), repeats), num_reps
 
 def make_grad_np_sum(ans, x, axis=None, keepdims=False):
     repeater, _ = repeat_to_match_shape(x, axis, keepdims)
@@ -168,6 +235,21 @@ def make_grad_np_prod(ans, x, axis=None, keepdims=False): # TODO: Support tuples
     repeater, _ = repeat_to_match_shape(x, axis, keepdims)
     return lambda g: repeater(g * ans) / x
 anp.prod.defgrad(make_grad_np_prod)
+
+def make_grad_np_var(ans, x, axis=None, ddof=0, keepdims=False):
+    repeater, num_reps = repeat_to_match_shape(x, axis, keepdims)
+    x_minus_mean = anp.conj(x - anp.mean(x, axis=axis, keepdims=True))
+    return lambda g: 2.0 * repeater(g) * x_minus_mean / (num_reps - ddof)
+anp.var.defgrad(make_grad_np_var)
+
+def make_grad_np_std(ans, x, axis=None, ddof=0, keepdims=False):
+    repeater, num_reps = repeat_to_match_shape(x, axis, keepdims)
+    if num_reps <= 1:
+        return lambda g: repeater(0.0 * g)  # Avoid division by zero.
+    else:
+        x_minus_mean = anp.conj(x - anp.mean(x, axis=axis, keepdims=True))
+        return lambda g: repeater(g / ans) * x_minus_mean / (num_reps - ddof)
+anp.std.defgrad(make_grad_np_std)
 
 def make_grad_chooser(ans, x, axis=None, keepdims=None):
     """Builds gradient of functions that choose a single item, such as min or max."""
@@ -198,23 +280,23 @@ def make_grad_dot(argnum, ans, A, B):
     else:
         axes = ([A.ndim - 1], [max(0, B.ndim - 2)])
     return make_grad_tensordot(argnum, ans, A, B, axes=axes)
-anp.dot.gradmaker = make_grad_dot
+anp.dot.defgrads(make_grad_dot, [0, 1])
 
 def make_grad_tensordot(argnum, ans, A, B, axes=2):
     if type(axes) is int:
-        axes = (range(anp.ndim(A))[-axes:],
-                range(anp.ndim(B))[:axes])
+        axes = (list(range(anp.ndim(A)))[-axes:],
+                list(range(anp.ndim(B)))[:axes])
 
     def gradfun(g):
         N_axes_summed = len(axes[0])
         if argnum == 0:
             X, Y = A, B
             X_axes_summed, Y_axes_summed = axes
-            g_axes_from_Y = range(anp.ndim(g))[(anp.ndim(X) - N_axes_summed):]
+            g_axes_from_Y = list(range(anp.ndim(g)))[(anp.ndim(X) - N_axes_summed):]
         else:
             X, Y = B, A
             X_axes_summed, Y_axes_summed = axes[::-1]
-            g_axes_from_Y = range(anp.ndim(g))[:(anp.ndim(Y) - N_axes_summed)]
+            g_axes_from_Y = list(range(anp.ndim(g)))[:(anp.ndim(Y) - N_axes_summed)]
 
         Y_axes_ignored = [i for i in range(anp.ndim(Y)) if i not in Y_axes_summed]
         result = anp.tensordot(g, Y, axes=[g_axes_from_Y, Y_axes_ignored])
@@ -226,35 +308,103 @@ def make_grad_tensordot(argnum, ans, A, B, axes=2):
             result = result[()]
         return anp.transpose(result, axes=reverse_permutation)
     return gradfun
-anp.tensordot.gradmaker = make_grad_tensordot
+anp.tensordot.defgrads(make_grad_tensordot, [0, 1])
 
 anp.outer.defgrad(lambda ans, a, b : lambda g : anp.dot(g, b.T))
 anp.outer.defgrad(lambda ans, a, b : lambda g : anp.dot(a.T, g), argnum=1)
 
-def make_grad_concatenate_args(argnum, ans, axis, *args):
+def make_grad_concatenate_args(argnum, ans, axis_args, kwargs):
+    axis, args = axis_args[0], axis_args[1:]
     start = sum([a.shape[axis] for a in args[:argnum-1]])
     idxs = [slice(None)] * ans.ndim
     idxs[axis] = slice(start, start + args[argnum-1].shape[axis])
     return lambda g : take(g, idxs)
 anp.concatenate_args.gradmaker = make_grad_concatenate_args
 
+def wrapped_reshape(x, *args, **kwargs):
+    # The reshape method can be called like A.reshape((5,4)) or A.reshape(5,4).
+    # The reshape function doesn't support both ways, so we have to wrap it.
+    if isinstance(args[0], int):
+        return anp.reshape(x, args, **kwargs)
+    else:
+        return anp.reshape(x, *args, **kwargs)
+setattr(ArrayNode, 'reshape', wrapped_reshape)
+
+def make_grad_sort(ans, x, axis=-1, kind='quicksort', order=None):
+    #TODO: Cast input with np.asanyarray()
+    if len(x.shape) > 1:
+        raise NotImplementedError(
+            "Gradient of sort not implemented for multi-dimensional arrays.")
+    sort_perm = anp.argsort(x, axis, kind, order)
+    return unpermuter(sort_perm)
+anp.sort.defgrad(make_grad_sort)
+anp.msort.defgrad(make_grad_sort)  # Until multi-D is allowed, these are the same.
+
+def make_grad_partition(ans, x, kth, axis=-1, kind='introselect', order=None):
+    #TODO: Cast input with np.asanyarray()
+    if len(x.shape) > 1:
+        raise NotImplementedError(
+            "Gradient of partition not implemented for multi-dimensional arrays.")
+    partition_perm = anp.argpartition(x, kth, axis, kind, order)
+    return unpermuter(partition_perm)
+anp.partition.defgrad(make_grad_partition)
+
+def unpermuter(permutation):
+    unsort = anp.zeros(len(permutation), dtype=int)
+    unsort[permutation] = list(range(len(permutation)))
+    return lambda g: g[unsort]
+
+def make_grad_reshape_list(ans, *arys):
+    if len(arys) > 1:
+        raise NotImplementedError("Can't handle multiple arguments yet.")
+    shape = anp.shape(arys[0])
+    return lambda g: anp.reshape(g, shape)
+anp.atleast_1d.defgrad(make_grad_reshape_list)
+anp.atleast_2d.defgrad(make_grad_reshape_list)
+anp.atleast_3d.defgrad(make_grad_reshape_list)
+
+def make_grad_einsum(argnum, ans, operands, kwargs):
+    # Gradient of einsum is obtained by swapping outgrad with the argument
+    # being differentiated wrt.
+    if isinstance(operands[0], string_types):  # using "ijk" convention.
+        subscripts, operands = operands[0], operands[1:]
+        if not '->' in subscripts:
+            raise NotImplementedError("Need indices on both sides.")
+        op_num = argnum - 1
+        input_subs, output_subs = subscripts.split('->')
+        input_subs_list = input_subs.split(',')
+        subs_wrt = input_subs_list[op_num]
+        rest_of_ops = operands[:op_num] + operands[op_num + 1:]
+        rest_of_subs = input_subs_list[:op_num] + input_subs_list[op_num + 1:]
+        new_subscripts = ','.join([output_subs] + rest_of_subs) + '->' + subs_wrt
+        return lambda g: anp.einsum(new_subscripts, *((g,) + rest_of_ops))
+    else:  # Using (op0, sublist0, op1, sublist1..., sublistout) convention.
+        if len(operands) % 2 == 0:
+            raise NotImplementedError("Need sublistout argument")
+        operands = list(operands)
+        rest_of_ops = [operands[-1]] + operands[:argnum] + operands[(argnum+2):-1] + [operands[argnum+1]]
+        return lambda g: anp.einsum(g, *rest_of_ops)
+
+anp.einsum.gradmaker = make_grad_einsum
+
 # ----- Handle broadcasting -----
 
-def unbroadcast(ans, x, fun):
+def unbroadcast(ans, x, gradfun):
+    # x is the argument that we're differentiating with respect to.
     if isarray(x):
         shape = x.shape
         def new_fun(g):
-            result = fun(g)
-            while result.ndim > len(shape):
+            result = gradfun(g)
+            while anp.ndim(result) > len(shape):
                 result = anp.sum(result, axis=0)
             for axis, size in enumerate(shape):
-                if size is 1:
+                if size == 1:
                     result = anp.sum(result, axis=axis, keepdims=True)
-            assert result.shape == shape
+            assert anp.shape(result) == shape
             return result
     elif isarray(ans):
-        new_fun = lambda g : anp.sum(fun(g))
+        new_fun = lambda g : anp.sum(gradfun(g))
     else:
-        return fun
-    new_fun.__name__ = "unbroadcast_{0}".format(fun.__name__)
+        return gradfun
+    new_fun.__name__ = "unbroadcast_{0}".format(gradfun.__name__)
     return new_fun

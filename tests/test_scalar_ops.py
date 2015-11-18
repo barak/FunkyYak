@@ -1,6 +1,6 @@
+from __future__ import absolute_import
 import autograd.numpy as np
 import autograd.numpy.random as npr
-import scipy.stats as sps
 from autograd.util import *
 from autograd import grad
 npr.seed(1)
